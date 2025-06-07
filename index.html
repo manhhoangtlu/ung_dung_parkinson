@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ứng dụng Hỗ trợ Chẩn đoán Parkinson - 65KTRB Web</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js for plotting -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Chart.js Zoom Plugin -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom/dist/chartjs-plugin-zoom.min.js"></script>
+
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* Custom styles */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+        }
+        .main-content {
+            min-height: 60vh;
+        }
+        /* Custom modal styles */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+            -webkit-backdrop-filter: blur(5px);
+            backdrop-filter: blur(5px);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 24px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 500px;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            animation: fadeIn 0.3s;
+        }
+        @keyframes fadeIn {
+            from {opacity: 0; transform: scale(0.9);}
+            to {opacity: 1; transform: scale(1);}
+        }
+        /* Style for active navigation button */
+        .nav-btn.active {
+            background-color: #1d4ed8; /* Darker blue */
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+        }
+        /* Style for object-fit to handle aspect ratios */
+        #webcam, #output_canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain; /* This is key for aspect ratio correction */
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+    <!-- Header -->
+    <header class="bg-white shadow-md p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <img src="https://placehold.co/100x100/e2e8f0/334155?text=Logo+1" alt="Logo Trường" class="h-16 w-16 object-contain" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/334155?text=Logo+1';">
+            <div class="text-center">
+                <h1 class="text-lg sm:text-xl md:text-2xl font-bold text-blue-800">NGHIÊN CỨU THUẬT TOÁN CHẨN ĐOÁN VÀ HỖ TRỢ ĐIỀU TRỊ BỆNH PARKINSON</h1>
+                <p class="text-sm md:text-base text-gray-600">ỨNG DỤNG CÔNG NGHỆ XỬ LÝ ẢNH - PHIÊN BẢN WEB</p>
+            </div>
+            <img src="https://placehold.co/100x100/e2e8f0/334155?text=Logo+2" alt="Logo Khoa" class="h-16 w-16 object-contain" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/334155?text=Logo+2';">
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main id="main-content-area" class="container mx-auto p-4 flex-grow main-content flex items-center justify-center">
+        <!-- Views will be dynamically inserted here -->
+    </main>
+    
+    <!-- Navigation Footer -->
+    <footer class="bg-white shadow-t-md p-4 sticky bottom-0">
+        <div class="container mx-auto grid grid-cols-2 md:grid-cols-4 gap-4">
+            <button data-view="quiz" class="nav-btn flex flex-col items-center p-3 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition-colors duration-300">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                <span>Bộ câu hỏi</span>
+            </button>
+            <button data-view="diagnosis" class="nav-btn flex flex-col items-center p-3 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition-colors duration-300">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                <span>Chẩn đoán Run</span>
+            </button>
+            <button data-view="gamma" class="nav-btn flex flex-col items-center p-3 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition-colors duration-300">
+                 <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                <span>Sóng não (Mô phỏng)</span>
+            </button>
+            <button data-view="doctor" class="nav-btn flex flex-col items-center p-3 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition-colors duration-300">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <span>Liên hệ Bác sĩ</span>
+            </button>
+        </div>
+        <div class="text-center text-gray-500 text-xs mt-4">
+            ĐỀ TÀI NGHIÊN CỨU THUẬT TOÁN CHẨN ĐOÁN VÀ HỖ TRỢ ĐIỀU TRỊ BỆNH PARKINSON - 65KTRB
+        </div>
+    </footer>
+
+    <!-- Modal for messages -->
+    <div id="messageModal" class="modal">
+        <div class="modal-content">
+            <h2 id="modalTitle" class="text-2xl font-bold mb-4"></h2>
+            <p id="modalMessage" class="mb-6"></p>
+            <button id="modalCloseBtn" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors">Đóng</button>
+        </div>
+    </div>
+
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script type="module">
+        import {
+            HandLandmarker,
+            FilesetResolver,
+            DrawingUtils
+        } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/vision_bundle.js";
+        
+        // --- GLOBAL VARIABLES & STATE ---
+        const mainContentArea = document.getElementById('main-content-area');
+        const navButtons = document.querySelectorAll('.nav-btn');
+        let currentView = 'welcome';
+        
+        // Diagnosis state
+        let handLandmarker = null;
+        let isModelReady = false;
+        let runningMode = "VIDEO";
+        let video;
+        let canvasElement;
+        let canvasCtx;
+        let drawingUtils;
+        let lastVideoTime = -1;
+        let animationFrameId;
+        const ANALYSIS_DURATION_MS = 15000;
+        let allFingerMovementData = {}; // FIX: Declare globally
+
+        // Chart instances
+        let gammaChart = null;
+        let tremorChart = null;
+        let fftChart = null;
+
+        // --- DATA ---
+        const quizQuestions = [
+            {"text": "1. Cô/chú có thường xuyên bị run tay khi nghỉ ngơi?", "options": ["A. Không", "B. Thi thoảng", "C. Thường xuyên"]},
+            {"text": "2. Cô/chú có cảm thấy cứng cơ hoặc khó cử động các khớp?", "options": ["A. Không", "B. Thi thoảng", "C. Thường xuyên"]},
+            {"text": "3. Khi đi bộ, Cô/chú có cảm giác bị kéo chân hoặc bước đi ngắn và chậm lại không?", "options": ["A. Không", "B. Thi thoảng", "C. Thường xuyên"]},
+            {"text": "4. Cô/chú có khi nào bị khựng lại đột ngột khi đang đi?", "options": ["A. Không", "B. Thi thoảng", "C. Thường xuyên"]},
+            {"text": "5. Cô/chú có thấy giảm biểu cảm khuôn mặt?", "options": ["A. Không", "B. Thi thoảng", "C. Thường xuyên"]},
+            {"text": "6. Cô/chú có gặp khó khăn khi viết chữ, chữ nhỏ dần?", "options": ["A. Không", "B. Thi thoảng", "C. Thường xuyên"]},
+            {"text": "7. Cô/chú có gặp tình trạng táo bón kéo dài?", "options": ["A. Không", "B. Thi thoảng", "C. Thường xuyên"]},
+            {"text": "8. Cô/chú có thấy mình bị giảm khả năng ngửi mùi?", "options": ["A. Không", "B. Thi thoảng", "C. Thường xuyên"]},
+            {"text": "9. Cô/chú có bị rối loạn giấc ngủ, ví dụ như ngã khỏi giường?", "options": ["A. Không", "B. Thi thoảng", "C. Thường xuyên"]},
+            {"text": "10. Cô/chú có cảm thấy mệt mỏi bất thường dù ngủ đủ giấc?", "options": ["A. Không", "B. Thi thoảng", "C. Thường xuyên"]},
+            {"text": "11. Cô/chú có gặp trầm cảm nhẹ hoặc cảm giác chán nản?", "options": ["A. Không", "B. Thi thoảng", "C. Thường xuyên"]},
+            {"text": "12. Cô/chú có bị giảm trí nhớ nhẹ hoặc khó tập trung?", "options": ["A. Không", "B. Thi thoảng", "C. Thường xuyên"]},
+            {"text": "13. Cô/chú có gặp khó khăn trong việc mặc quần áo, ăn uống?", "options": ["A. Không", "B. Thi thoảng", "C. Thường xuyên"]},
+            {"text": "14. Cô/chú có bị khó giữ thăng bằng, dễ vấp ngã?", "options": ["A. Không", "B. Thi thoảng", "C. Thường xuyên"]},
+            {"text": "15. Cô/chú có đang sử dụng thuốc điều trị thần kinh hoặc được chẩn đoán Parkinson?", "options": ["A. Không", "B. Thi thoảng", "C. Thường xuyên"]}
+        ];
+        const pointsPerOption = [0, 1, 2];
+        const FINGER_DEFINITIONS = {
+            'NGÓN TRỎ': 8,
+            'NGÓN GIỮA': 12,
+            'NGÓN ÁP ÚT': 16,
+            'NGÓN ÚT': 20
+        };
+
+        // --- MODAL LOGIC ---
+        const modal = document.getElementById('messageModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalMessage = document.getElementById('modalMessage');
+        const modalCloseBtn = document.getElementById('modalCloseBtn');
+        
+        function showModal(title, message) {
+            modalTitle.textContent = title;
+            modalMessage.innerHTML = message;
+            modal.style.display = 'flex';
+        }
+        modalCloseBtn.onclick = () => { modal.style.display = 'none'; };
+        window.onclick = (event) => {
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        };
+
+        // --- VIEW ROUTING ---
+        function switchView(viewName) {
+            currentView = viewName;
+            
+            stopAllActivities();
+            mainContentArea.innerHTML = '';
+            
+            navButtons.forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.view === viewName);
+            });
+
+            switch (viewName) {
+                case 'welcome':
+                    renderWelcomeView();
+                    navButtons.forEach(btn => btn.classList.remove('active'));
+                    break;
+                case 'quiz':
+                    renderQuizView();
+                    break;
+                case 'diagnosis':
+                    renderDiagnosisView();
+                    break;
+                case 'gamma':
+                    renderGammaView();
+                    break;
+                case 'doctor':
+                    renderDoctorView();
+                    break;
+            }
+        }
+
+        // --- VIEW RENDERING FUNCTIONS ---
+
+        function renderWelcomeView() {
+            mainContentArea.innerHTML = `
+                <div class="text-center">
+                    <h2 class="text-4xl font-bold text-gray-800 mb-4 animate-fadeIn">Chào mừng!</h2>
+                    <p class="text-lg text-gray-600">Chào mừng đến với ứng dụng hỗ trợ chẩn đoán Parkinson phiên bản web.</p>
+                    <p class="text-lg text-gray-600 mt-2">Vui lòng chọn một chức năng ở thanh điều hướng bên dưới để bắt đầu.</p>
+                </div>
+            `;
+        }
+
+        function renderQuizView() {
+            let currentQuestionIndex = 0;
+            let score = 0;
+
+            function displayQuestion() {
+                const question = quizQuestions[currentQuestionIndex];
+                mainContentArea.innerHTML = `
+                    <div class="w-full max-w-2xl bg-white p-8 rounded-xl shadow-lg">
+                        <div class="mb-4">
+                            <p class="text-gray-500">Câu hỏi ${currentQuestionIndex + 1} / ${quizQuestions.length}</p>
+                            <div class="w-full bg-gray-200 rounded-full h-2.5 mt-1">
+                                <div class="bg-blue-600 h-2.5 rounded-full" style="width: ${((currentQuestionIndex + 1) / quizQuestions.length) * 100}%"></div>
+                            </div>
+                        </div>
+                        <h3 class="text-2xl font-semibold mb-6 text-gray-800">${question.text}</h3>
+                        <div id="quiz-options" class="space-y-4">
+                            ${question.options.map((opt, index) => `
+                                <div>
+                                    <input type="radio" id="option${index}" name="quizOption" value="${index}" class="hidden peer">
+                                    <label for="option${index}" class="block cursor-pointer select-none rounded-xl p-4 text-center text-gray-700 border-2 border-gray-300 peer-checked:bg-blue-500 peer-checked:font-bold peer-checked:text-white peer-checked:border-blue-500 transition-all">
+                                        ${opt}
+                                    </label>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <button id="next-question-btn" class="mt-8 w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-400 transition-colors">Tiếp theo</button>
+                    </div>
+                `;
+                document.getElementById('next-question-btn').addEventListener('click', nextQuestion);
+            }
+
+            function nextQuestion() {
+                const selectedOption = document.querySelector('input[name="quizOption"]:checked');
+                if (!selectedOption) {
+                    showModal("Thông báo", "Vui lòng chọn một đáp án.");
+                    return;
+                }
+                score += pointsPerOption[parseInt(selectedOption.value)];
+                currentQuestionIndex++;
+                if (currentQuestionIndex < quizQuestions.length) {
+                    displayQuestion();
+                } else {
+                    showResults();
+                }
+            }
+
+            function showResults() {
+                const totalPossibleScore = quizQuestions.length * Math.max(...pointsPerOption);
+                let resultMessage = `Tổng điểm của cô/chú là: <strong>${score} / ${totalPossibleScore}</strong><br><br>`;
+                if (score > 6) {
+                    resultMessage += "Dựa trên câu trả lời, nhận thấy cô/chú có một số dấu hiệu của bệnh Parkinson. Vui lòng tham khảo ý kiến bác sĩ để được chẩn đoán chính xác.";
+                } else {
+                    resultMessage += "Không nhận thấy các dấu hiệu rõ ràng của bệnh Parkinson qua bài kiểm tra này. Tuy nhiên, nếu có bất kỳ lo lắng nào về sức khỏe, hãy tham khảo ý kiến bác sĩ.";
+                }
+                
+                mainContentArea.innerHTML = `
+                    <div class="text-center w-full max-w-2xl bg-white p-8 rounded-xl shadow-lg">
+                        <h2 class="text-3xl font-bold text-gray-800 mb-4">Hoàn thành!</h2>
+                        <p class="text-lg text-gray-600">${resultMessage}</p>
+                        <button id="restart-quiz-btn" class="mt-8 bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 transition-colors">Làm lại bài trắc nghiệm</button>
+                    </div>
+                `;
+                document.getElementById('restart-quiz-btn').addEventListener('click', () => switchView('quiz'));
+            }
+
+            displayQuestion();
+        }
+
+        function renderDiagnosisView() {
+            mainContentArea.innerHTML = `
+                <div class="w-full max-w-4xl bg-white p-8 rounded-xl shadow-lg text-center">
+                    <h2 class="text-3xl font-bold text-gray-800 mb-4">Chẩn đoán run tay</h2>
+                    <p class="text-gray-600 mb-2">Sử dụng camera trực tiếp hoặc tải lên một video để phân tích. Bạn có thể dùng con lăn chuột để phóng to/thu nhỏ biểu đồ.</p>
+                    
+                    <div class="bg-gray-100 p-4 rounded-lg border border-gray-200 my-6">
+                        <h3 class="text-lg font-semibold text-gray-700 mb-3">Bảng điều khiển</h3>
+                        <div id="diagnosis-controls" class="flex flex-wrap justify-center items-center gap-4">
+                            <button id="start-camera-btn" class="bg-blue-600 text-white py-2 px-5 rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-md">Phân tích từ Camera</button>
+                            <label for="video-upload" class="bg-purple-600 text-white py-2 px-5 rounded-lg font-semibold hover:bg-purple-700 transition-colors shadow-md cursor-pointer">Chọn file Video</label>
+                            <input type="file" id="video-upload" class="hidden" accept="video/*">
+                            <button id="start-video-btn" class="bg-green-600 text-white py-2 px-5 rounded-lg font-semibold hover:bg-green-700 transition-colors shadow-md hidden">Phân tích từ Video</button>
+                            <button id="stop-btn" class="bg-red-600 text-white py-2 px-5 rounded-lg font-semibold hover:bg-red-700 transition-colors shadow-md hidden">Dừng</button>
+                        </div>
+                    </div>
+
+                    <div id="status-message" class="text-blue-600 font-semibold my-2 h-12 flex items-center justify-center"></div>
+                    <div class="relative w-full max-w-2xl mx-auto aspect-video bg-gray-900 rounded-lg overflow-hidden mt-4">
+                        <video id="webcam" class="absolute inset-0 w-full h-full" autoplay playsinline></video>
+                        <canvas id="output_canvas" class="absolute inset-0 w-full h-full"></canvas>
+                    </div>
+                    <div id="charts-container" class="mt-8 grid md:grid-cols-2 gap-6">
+                        <div class="chart-container">
+                             <h3 id="tremor-chart-title" class="font-semibold text-lg mb-2">Biên độ run theo thời gian</h3>
+                            <canvas id="tremor-chart"></canvas>
+                        </div>
+                        <div class="chart-container">
+                           <h3 class="font-semibold text-lg mb-2">Phân tích tần số (FFT)</h3>
+                            <canvas id="fft-chart"></canvas>
+                        </div>
+                    </div>
+                    <div id="final-actions-container" class="mt-6 flex justify-center items-center gap-4 hidden">
+                         <button id="reset-zoom-btn" class="bg-gray-500 text-white py-2 px-5 rounded-lg font-semibold hover:bg-gray-600 transition-colors shadow-md">Reset Zoom</button>
+                         <button id="download-results-btn" class="bg-sky-500 text-white py-2 px-5 rounded-lg font-semibold hover:bg-sky-600 transition-colors shadow-md">Tải xuống Kết quả</button>
+                    </div>
+                    <div id="result-text" class="mt-6 text-2xl font-bold"></div>
+                </div>
+            `;
+            
+            const statusMessage = document.getElementById('status-message');
+            if (isModelReady) {
+                statusMessage.innerText = "Mô hình đã sẵn sàng.";
+            } else {
+                statusMessage.innerText = "Đang tải mô hình nhận dạng, vui lòng đợi...";
+            }
+            
+            document.getElementById('start-camera-btn').onclick = () => startDiagnosis('camera');
+            document.getElementById('video-upload').onchange = handleVideoUpload;
+            document.getElementById('start-video-btn').onclick = () => startDiagnosis('video');
+            document.getElementById('stop-btn').onclick = stopAllActivities;
+            
+            video = document.getElementById("webcam");
+            canvasElement = document.getElementById("output_canvas");
+            canvasCtx = canvasElement.getContext("2d");
+            drawingUtils = new DrawingUtils(canvasCtx);
+        }
+
+        function renderGammaView() {
+            mainContentArea.innerHTML = `
+                <div class="w-full max-w-4xl bg-white p-8 rounded-xl shadow-lg text-center">
+                    <h2 class="text-3xl font-bold text-gray-800 mb-4">Mô phỏng Phân tích Sóng não</h2>
+                    <p class="text-gray-600 mb-6">Đây là màn hình mô phỏng dữ liệu sóng não EEG. Do hạn chế của trình duyệt, không thể kết nối trực tiếp với thiết bị. Biểu đồ dưới đây tự động tạo ra dữ liệu để minh họa.</p>
+                    <div class="w-full">
+                        <canvas id="gamma-chart"></canvas>
+                    </div>
+                </div>
+            `;
+            startGammaSimulation();
+        }
+
+        function renderDoctorView() {
+            mainContentArea.innerHTML = `
+                <div class="w-full max-w-4xl bg-white p-8 rounded-xl shadow-lg flex flex-col md:flex-row items-center gap-8">
+                    <img src="https://placehold.co/800x600/e0f2fe/0c4a6e?text=Thông+tin+bác+sĩ" alt="Thông tin bác sĩ" class="w-full md:w-1/2 h-auto object-cover rounded-lg shadow-md" onerror="this.onerror=null;this.src='https://placehold.co/800x600/e0f2fe/0c4a6e?text=Ảnh+minh+họa';">
+                    <div class="text-center md:text-left">
+                        <h2 class="text-3xl font-bold text-gray-800 mb-4">Liên hệ Bác sĩ</h2>
+                        <p class="text-lg text-gray-700 mb-2">Để được tư vấn và chẩn đoán chính xác, vui lòng liên hệ:</p>
+                        <p class="text-xl font-semibold text-blue-700">Bệnh Viện Bạch Mai</p>
+                        <p class="text-md text-gray-600 mt-2"><strong>Số điện thoại:</strong> 024 3869 3731</p>
+                        <p class="text-md text-gray-600"><strong>Địa chỉ:</strong> 78 Đường Giải Phóng, Đống Đa, Hà Nội</p>
+                        <a href="https://bachmai.gov.vn/home" target="_blank" rel="noopener noreferrer" class="mt-6 inline-block bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 transition-colors">Truy cập Website</a>
+                    </div>
+                </div>
+            `;
+        }
+
+
+        // --- CORE FUNCTIONALITY ---
+        
+        function startGammaSimulation() {
+            const ctx = document.getElementById('gamma-chart')?.getContext('2d');
+            if (!ctx) return;
+
+            const eegBands = ['DELTA', 'THETA', 'ALPHA', 'BETA', 'GAMMA'];
+            const chartData = { labels: eegBands, datasets: [{ label: 'Power (uV)^2 / Hz', data: [10, 5, 8, 12, 20], backgroundColor: ['#1f77b4', '#ff7f00', '#2ca02c', '#d62728', '#9467bd'] }] };
+
+            gammaChart = new Chart(ctx, {
+                type: 'bar',
+                data: chartData,
+                options: { responsive: true, plugins: { legend: { display: false }, title: { display: true, text: 'Năng lượng các dải tần EEG (Mô phỏng)' } }, scales: { y: { beginAtZero: true, title: { display: true, text: 'Power' } } } }
+            });
+
+            animationFrameId = setInterval(() => {
+                if (gammaChart) {
+                    gammaChart.data.datasets[0].data = gammaChart.data.datasets[0].data.map(val => Math.max(1, val + (Math.random() - 0.5) * 4));
+                    gammaChart.update();
+                } else {
+                    clearInterval(animationFrameId);
+                }
+            }, 500);
+        }
+
+        async function createHandLandmarker() {
+            try {
+                const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm");
+                handLandmarker = await HandLandmarker.createFromOptions(vision, {
+                    baseOptions: { modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task", delegate: "GPU" },
+                    runningMode: runningMode,
+                    numHands: 1
+                });
+                isModelReady = true;
+                const statusMessage = document.getElementById('status-message');
+                if (statusMessage) {
+                    statusMessage.innerText = "Mô hình đã sẵn sàng.";
+                }
+            } catch (error) {
+                console.error("Failed to create HandLandmarker:", error);
+                showModal("Lỗi mô hình", "Không thể tải mô hình nhận dạng. Vui lòng kiểm tra kết nối mạng và thử lại.");
+            }
+        }
+
+        function startDiagnosis(sourceType) {
+             if (!isModelReady) {
+                showModal("Lỗi", "Mô hình nhận dạng chưa sẵn sàng. Vui lòng đợi.");
+                return;
+            }
+            
+            allFingerMovementData = {}; 
+
+            document.getElementById('stop-btn').classList.remove('hidden');
+            document.getElementById('start-camera-btn').classList.add('hidden');
+            document.getElementById('start-video-btn').classList.add('hidden');
+            document.querySelector('label[for="video-upload"]').classList.add('hidden');
+            
+            initializeTremorCharts();
+
+            if (sourceType === 'camera') {
+                document.getElementById('status-message').innerText = "Đang khởi động camera...";
+                const constraints = { video: true };
+                navigator.mediaDevices.getUserMedia(constraints).then((stream) => {
+                    video.srcObject = stream;
+                    video.addEventListener("loadeddata", predictWebcam);
+                }).catch(err => {
+                     showModal("Lỗi Camera", `Không thể truy cập camera: ${err.message}`);
+                     stopAllActivities();
+                });
+            } else if (sourceType === 'video') {
+                const videoFile = document.getElementById('video-upload').files[0];
+                if (!videoFile) {
+                    showModal("Lỗi", "Vui lòng chọn một file video trước.");
+                    stopAllActivities();
+                    return;
+                }
+                const url = URL.createObjectURL(videoFile);
+                video.src = url;
+                video.onended = () => {
+                     stopWebcamLoop();
+                     document.getElementById('status-message').innerText = 'Phân tích hoàn tất!';
+                     analyzeTremorData();
+                };
+                video.addEventListener('loadeddata', () => {
+                    video.play();
+                    predictWebcam();
+                });
+            }
+        }
+        
+        function handleVideoUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const startVideoBtn = document.getElementById('start-video-btn');
+                startVideoBtn.classList.remove('hidden');
+                document.getElementById('status-message').innerText = `Đã chọn file: ${file.name}. Nhấn "Phân tích từ Video" để bắt đầu.`;
+            }
+        }
+
+        let analysisStartTime = null;
+        
+        function stopWebcamLoop() {
+             if (animationFrameId) {
+                window.cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            if (video && video.srcObject) {
+                video.srcObject.getTracks().forEach(track => track.stop());
+                video.srcObject = null;
+            }
+            lastVideoTime = -1;
+            analysisStartTime = null;
+        }
+
+        async function predictWebcam() {
+            if (currentView !== 'diagnosis' || (!video.srcObject && !video.currentSrc)) return;
+
+            if (video.videoWidth === 0 || video.videoHeight === 0) {
+                 if (!video.ended) {
+                    window.requestAnimationFrame(predictWebcam);
+                 }
+                return;
+            }
+
+            // Timer for camera stream
+            if (video.srcObject) { 
+                if (analysisStartTime === null) analysisStartTime = performance.now();
+                const elapsedTime = performance.now() - analysisStartTime;
+                
+                const statusMessage = document.getElementById('status-message');
+                if (statusMessage) {
+                    const remainingTime = Math.max(0, (ANALYSIS_DURATION_MS - elapsedTime) / 1000).toFixed(1);
+                    statusMessage.innerHTML = `Đang phân tích... Vui lòng giữ yên tay.<br>Thời gian còn lại: ${remainingTime}s`;
+                }
+
+                if (elapsedTime >= ANALYSIS_DURATION_MS) {
+                    stopWebcamLoop();
+                    if (statusMessage) statusMessage.innerText = 'Phân tích hoàn tất!';
+                    analyzeTremorData();
+                    
+                    document.getElementById('stop-btn').classList.add('hidden');
+                    document.getElementById('start-camera-btn').classList.remove('hidden');
+                    document.querySelector('label[for="video-upload"]').classList.remove('hidden');
+                    return; 
+                }
+            }
+
+
+            let nowInMs = Date.now();
+            if (video.currentTime !== lastVideoTime) {
+                lastVideoTime = video.currentTime;
+                const results = handLandmarker.detectForVideo(video, nowInMs);
+                
+                canvasElement.width = video.videoWidth;
+                canvasElement.height = video.videoHeight;
+                canvasCtx.save();
+                canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+                if (results.landmarks && results.landmarks.length > 0) {
+                    for (const landmarks of results.landmarks) {
+                        drawingUtils.drawConnectors(landmarks, HandLandmarker.HAND_CONNECTIONS, { color: "#007BFF", lineWidth: 3 });
+                        drawingUtils.drawLandmarks(landmarks, { color: "#FFFFFF", radius: 3, lineWidth: 1 });
+                        
+                        const elapsedTime = video.currentTime;
+
+                        for (const fingerName in FINGER_DEFINITIONS) {
+                            const landmarkIndex = FINGER_DEFINITIONS[fingerName];
+                            const tipLandmark = landmarks[landmarkIndex];
+                            if (tipLandmark) {
+                                if (!allFingerMovementData[fingerName]) {
+                                    allFingerMovementData[fingerName] = [];
+                                }
+                                allFingerMovementData[fingerName].push({ t: elapsedTime, x: tipLandmark.x, y: tipLandmark.y });
+                            }
+                        }
+                    }
+                }
+                canvasCtx.restore();
+            }
+            
+            if (!video.ended) {
+                 animationFrameId = window.requestAnimationFrame(predictWebcam);
+            }
+        }
+        
+        function initializeTremorCharts() {
+            if (tremorChart) tremorChart.destroy();
+            if (fftChart) fftChart.destroy();
+
+            document.getElementById('final-actions-container').classList.add('hidden');
+            document.getElementById('result-text').innerHTML = ''; 
+            document.getElementById('tremor-chart-title').innerText = 'Biên độ run theo thời gian';
+
+            const tremorCtx = document.getElementById('tremor-chart')?.getContext('2d');
+            if(tremorCtx) {
+                tremorChart = new Chart(tremorCtx, {
+                    type: 'line',
+                    data: { labels: [], datasets: [{ label: 'Dao động ngón tay', data: [], borderColor: 'rgb(75, 192, 192)', tension: 0.1, pointRadius: 0 }] },
+                    options: { 
+                        scales: { x: { title: { text: 'Thời gian (s)', display: true }}, y: { title: { text: 'Vị trí (tọa độ chuẩn hóa)', display: true }, reverse: true } }, 
+                        animation: { duration: 0 },
+                        plugins: {
+                            zoom: {
+                                pan: { enabled: true, mode: 'xy' },
+                                zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy' }
+                            }
+                        }
+                    }
+                });
+            }
+
+            const fftCtx = document.getElementById('fft-chart')?.getContext('2d');
+            if(fftCtx) {
+                fftChart = new Chart(fftCtx, {
+                    type: 'bar',
+                    data: { datasets: [{ label: 'Biên độ', data: [], backgroundColor: 'rgba(255, 99, 132, 0.5)' }] },
+                    options: { 
+                        scales: { 
+                            x: { type: 'linear', title: { text: 'Tần số (Hz)', display: true }, min: 0, max: 14 }, 
+                            y: { title: { text: 'Biên độ', display: true }, beginAtZero: true }
+                        },
+                        plugins: {
+                            zoom: {
+                                pan: { enabled: true, mode: 'x' },
+                                zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+        
+        function analyzeTremorData() {
+            if (Object.keys(allFingerMovementData).length === 0) {
+                 showModal("Dữ liệu không đủ", "Không thu thập được dữ liệu chuyển động để phân tích. Vui lòng thử lại.");
+                return;
+            }
+
+            // Step 1: Find finger with most tremor
+            let bestFingerName = null;
+            let maxTremorMagnitude = -1;
+            for (const fingerName in allFingerMovementData) {
+                const data = allFingerMovementData[fingerName];
+                if (data.length < 20) continue;
+                
+                const xData = data.map(p => p.x);
+                const yData = data.map(p => p.y);
+                const stdDevX = Math.sqrt(xData.map(x => Math.pow(x - (xData.reduce((a,b)=>a+b)/xData.length), 2)).reduce((a,b)=>a+b) / xData.length);
+                const stdDevY = Math.sqrt(yData.map(y => Math.pow(y - (yData.reduce((a,b)=>a+b)/yData.length), 2)).reduce((a,b)=>a+b) / yData.length);
+                const magnitude = Math.sqrt(stdDevX**2 + stdDevY**2);
+                
+                if (magnitude > maxTremorMagnitude) {
+                    maxTremorMagnitude = magnitude;
+                    bestFingerName = fingerName;
+                }
+            }
+            
+            if (!bestFingerName) {
+                showModal("Dữ liệu không đủ", "Không có đủ dữ liệu ổn định từ ngón tay nào để phân tích.");
+                return;
+            }
+
+            // Step 2: Choose axis with most tremor from the best finger
+            const bestFingerData = allFingerMovementData[bestFingerName];
+            const xData = bestFingerData.map(p => p.x);
+            const yData = bestFingerData.map(p => p.y);
+            const stdDevX = Math.sqrt(xData.map(x => Math.pow(x - (xData.reduce((a,b)=>a+b)/xData.length), 2)).reduce((a,b)=>a+b) / xData.length);
+            const stdDevY = Math.sqrt(yData.map(y => Math.pow(y - (yData.reduce((a,b)=>a+b)/yData.length), 2)).reduce((a,b)=>a+b) / yData.length);
+            
+            let finalSignal;
+            let chosenAxis;
+            if (stdDevX >= stdDevY) {
+                finalSignal = xData;
+                chosenAxis = 'X';
+            } else {
+                finalSignal = yData;
+                chosenAxis = 'Y';
+            }
+            
+            document.getElementById('tremor-chart-title').innerText = `Biên độ run (Phân tích trên ${bestFingerName} - Trục ${chosenAxis})`;
+            tremorChart.data.labels = bestFingerData.map(p => p.t.toFixed(2));
+            tremorChart.data.datasets[0].data = finalSignal;
+            tremorChart.update();
+
+
+            // Step 3: Perform FFT
+            const mean = finalSignal.reduce((a, b) => a + b) / finalSignal.length;
+            let signalForFft = finalSignal.map(y => y - mean);
+
+            const originalLength = signalForFft.length;
+            let n = 1;
+            while (n < originalLength) n *= 2;
+            while (signalForFft.length < n) signalForFft.push(0);
+
+            const duration = bestFingerData[bestFingerData.length - 1].t - bestFingerData[0].t;
+            const Fs = originalLength / duration; 
+            
+            const N = signalForFft.length; 
+            const fftResult = fft(signalForFft);
+            const frequencies = Array.from({length: Math.floor(N / 2)}, (_, i) => i * Fs / N);
+            const amplitudes = fftResult.slice(0, Math.floor(N / 2)).map(c => Math.sqrt(c.re*c.re + c.im*c.im) * 2 / N);
+            
+            if (fftChart) {
+                const fftDataForChart = frequencies.map((f, i) => ({x: f, y: amplitudes[i]}));
+                fftChart.data.datasets[0].data = fftDataForChart;
+                fftChart.update();
+            }
+            
+            const finalActionsContainer = document.getElementById('final-actions-container');
+            finalActionsContainer.classList.remove('hidden');
+            document.getElementById('reset-zoom-btn').onclick = () => {
+                tremorChart?.resetZoom();
+                fftChart?.resetZoom();
+            };
+            document.getElementById('download-results-btn').onclick = () => downloadResults();
+
+            const peakSearchStartIndex = frequencies.findIndex(f => f >= 2);
+            const peakSearchEndIndex = frequencies.findIndex(f => f >= 10) || frequencies.length;
+            const searchSlice = amplitudes.slice(peakSearchStartIndex, peakSearchEndIndex);
+            
+            let peakFrequency = 0;
+            if (searchSlice.length > 0) {
+                const localMaxIndex = searchSlice.indexOf(Math.max(...searchSlice));
+                const globalMaxIndex = peakSearchStartIndex + localMaxIndex;
+
+                if (globalMaxIndex < frequencies.length) {
+                   peakFrequency = frequencies[globalMaxIndex];
+                }
+            }
+
+            const resultText = document.getElementById('result-text');
+            const parkinsonFreqMin = 4.0;
+            const parkinsonFreqMax = 7.0;
+            if (peakFrequency >= parkinsonFreqMin && peakFrequency <= parkinsonFreqMax) {
+                resultText.innerHTML = `Kết quả: <span class="text-red-600">Có dấu hiệu run (Tần số đỉnh: ${peakFrequency.toFixed(2)} Hz)</span>`;
+            } else {
+                 resultText.innerHTML = `Kết quả: <span class="text-green-600">Không có dấu hiệu run rõ rệt (Tần số đỉnh: ${peakFrequency.toFixed(2)} Hz)</span>`;
+            }
+        }
+        
+        function downloadResults() {
+            if (!tremorChart || !fftChart) return;
+            const canvas1 = tremorChart.canvas;
+            const canvas2 = fftChart.canvas;
+
+            const combinedCanvas = document.createElement('canvas');
+            const ctx = combinedCanvas.getContext('2d');
+            
+            const padding = 50;
+            const titleHeight = 50;
+
+            combinedCanvas.width = canvas1.width + canvas2.width + padding * 3;
+            combinedCanvas.height = Math.max(canvas1.height, canvas2.height) + titleHeight + padding;
+            
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, combinedCanvas.width, combinedCanvas.height);
+            
+            ctx.fillStyle = 'black';
+            ctx.font = 'bold 20px Inter';
+            ctx.textAlign = 'center';
+            
+            ctx.fillText(document.getElementById('tremor-chart-title').innerText, padding + canvas1.width / 2, titleHeight - 10);
+            ctx.drawImage(canvas1, padding, titleHeight);
+
+            ctx.fillText('Phân tích tần số (FFT)', padding * 2 + canvas1.width + canvas2.width / 2, titleHeight - 10);
+            ctx.drawImage(canvas2, padding * 2 + canvas1.width, titleHeight);
+
+            const imageLink = document.createElement('a');
+            imageLink.href = combinedCanvas.toDataURL('image/png', 1.0);
+            imageLink.download = 'ket-qua-chan-doan.png';
+            imageLink.click();
+        }
+
+        function fft(x) {
+            const N = x.length;
+            if (N <= 1) return [{re: x[0] || 0, im: 0}];
+            
+            const even = fft(x.filter((_, i) => i % 2 === 0));
+            const odd = fft(x.filter((_, i) => i % 2 !== 0));
+            
+            let result = Array(N);
+            for (let k = 0; k < N / 2; k++) {
+                const angle = -2 * Math.PI * k / N;
+                const t = { 
+                    re: Math.cos(angle) * (odd[k]?.re || 0) - Math.sin(angle) * (odd[k]?.im || 0), 
+                    im: Math.cos(angle) * (odd[k]?.im || 0) + Math.sin(angle) * (odd[k]?.re || 0) 
+                };
+                result[k] = { 
+                    re: (even[k]?.re || 0) + t.re, 
+                    im: (even[k]?.im || 0) + t.im 
+                };
+                result[k + N / 2] = { 
+                    re: (even[k]?.re || 0) - t.re, 
+                    im: (even[k]?.im || 0) - t.im 
+                };
+            }
+            return result;
+        }
+
+        function stopAllActivities() {
+            stopWebcamLoop();
+            
+            if (gammaChart) { gammaChart.destroy(); gammaChart = null; }
+            if (tremorChart) { tremorChart.destroy(); tremorChart = null; }
+            if (fftChart) { fftChart.destroy(); fftChart = null; }
+
+            const statusMessage = document.getElementById('status-message');
+            if(statusMessage) statusMessage.innerText = 'Mô hình đã sẵn sàng.';
+
+            const resultText = document.getElementById('result-text');
+            if (resultText) resultText.innerText = '';
+
+            document.getElementById('stop-btn')?.classList.add('hidden');
+            document.getElementById('start-camera-btn')?.classList.remove('hidden');
+            document.querySelector('label[for="video-upload"]')?.classList.remove('hidden');
+            document.getElementById('start-video-btn')?.classList.add('hidden');
+            document.getElementById('final-actions-container')?.classList.add('hidden');
+
+            const videoUpload = document.getElementById('video-upload');
+            if(videoUpload) videoUpload.value = '';
+            
+            allFingerMovementData = {};
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            navButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    switchView(button.dataset.view);
+                });
+            });
+            switchView('welcome');
+            createHandLandmarker();
+        });
+    </script>
+</body>
+</html>
